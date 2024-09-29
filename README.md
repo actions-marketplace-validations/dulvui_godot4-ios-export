@@ -2,18 +2,18 @@
 Github Action to export a Godot Engine 4.x game to iOS.  
 If you are facing problems with the action or this README feels incomplete, pull requests are welcome or open an issue.
 
-## Table of contents
+# Table of contents
 - [godot4-ios-export](#godot4-ios-export)
-  - [Table of contents](#table-of-contents)
-    - [Requirements](#requirements)
-    - [Parameters](#parameters)
-    - [How to use](#how-to-use)
-  - [License](#license)
+- [Table of contents](#table-of-contents)
+- [Requirements](#requirements)
+- [Parameters](#parameters)
+- [How to use](#how-to-use)
+- [License](#license)
 
-### Requirements
+# Requirements
  - Godot Engine project with a iOS config in your `exports_presets.cfg` file
 
-### Parameters
+# Parameters
 | key | required | default | description |
 | ----|----------|---------|-------------|
 | godot-version | true | . | Godot Engine version. Supported are 4.x versions. Check versions [here](https://github.com/godotengine/godot-builds/releases) |
@@ -21,7 +21,7 @@ If you are facing problems with the action or this README feels incomplete, pull
 | working-directory | false | . | Path to .project file |
 
 
-### How to use
+# How to use
 This is the minimal example on how to use the action.
 ```yml
 - name: Export iOS
@@ -75,5 +75,5 @@ The exported project can then be built and uploaded to the Apple App Store's Tes
 
 ```
 
-## License
+# License
 This software is licensed under the [MIT license](LICENSE).
