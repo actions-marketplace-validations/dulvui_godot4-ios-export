@@ -6,6 +6,7 @@ If you are facing problems with the action or this README feels incomplete, pull
 - [Requirements](#requirements)
 - [Parameters](#parameters)
 - [How to use](#how-to-use)
+- [Example](#example)
 - [License](#license)
 
 # Requirements
@@ -21,6 +22,7 @@ If you are facing problems with the action or this README feels incomplete, pull
 
 # How to use
 This is the minimal example on how to use the action.
+This creates a XCode project in the destination directory defined in your `exports_presets.cfg` file.  
 ```yml
 - name: Export iOS
   uses: dulvui/godot4-ios-export@v1
@@ -28,49 +30,93 @@ This is the minimal example on how to use the action.
     godot-version: 4.3
 ```
 
-This creates a XCode project in the destination directory defined in your `exports_presets.cfg` file.  
-The exported project can then be built and uploaded to the Apple App Store's Testflight
+# Example
+The exported project can then be built and uploaded to the Apple App Store's Testflight.  
+Note: This file can also be found here  
+https://github.com/dulvui/futsal-manager/blob/main/.github/workflows/upload-ios.yml 
 ```yml
-- name: Extract Provisioning profile UUID and create PP_UUID env variable
-  run: echo "PP_UUID=$(grep -a -A 1 'UUID' $PPROFILE_PATH | grep string | sed -e "s|<string>||" -e "s|</string>||" | tr -d '\t')" >> $GITHUB_ENV
+# SPDX-FileCopyrightText: 2023 Simon Dalvai <info@simondalvai.org>
 
-- name: Resolve package dependencies
-  run: xcodebuild -resolvePackageDependencies
+# SPDX-License-Identifier: CC0-1.0
 
-- name: Build the xarchive
-  run: |
-    set -eo pipefail
-    xcodebuild  clean archive \
-      -scheme $PROJECT_NAME \
-      -configuration "Release" \
-      -sdk iphoneos \
-      -archivePath "$PWD/build/$PROJECT_NAME.xcarchive" \
-      -destination "generic/platform=iOS,name=Any iOS Device" \
-      OTHER_CODE_SIGN_FLAGS="--keychain $RUNNER_TEMP/app-signing.keychain-db" \
-      CODE_SIGN_STYLE=Manual \
-      PROVISIONING_PROFILE=$PP_UUID \
-      CODE_SIGN_IDENTITY="Apple Distribution"
+name: iOS upload
 
-- name: Export .ipa
-  run: |
-    set -eo pipefail
-    xcodebuild -archivePath "$PWD/build/$PROJECT_NAME.xcarchive" \
-      -exportOptionsPlist exportOptions.plist \
-      -exportPath $PWD/build \
-      -allowProvisioningUpdates \
-      -exportArchive
+on:
+  push:
+    # paths:
+    #   - ".github/workflows/upload-ios.yml"
+    #   - "exportOptions.plist"
+    #   - "export_presets.ios.example"
 
-- name: Publish the App on TestFlight
-  if: success()
-  run: |
-    xcrun altool \
-      --upload-app \
-      -t ios \
-      -f $PWD/build/*.ipa \
-      -u "${{ secrets.APPLE_ID_USERNAME }}" \
-      -p "${{ secrets.APPLE_ID_PASSWORD }}" \
-      --verbose
+env:
+  GODOT_VERSION: 4.3
+  PROJECT_NAME: FutsalManager
+  WORKING_DIRECTORY: game
+  BUILD_CERTIFICATE_BASE64: ${{ secrets.IOS_BUILD_CERTIFICATE_BASE64 }}
+  P12_PASSWORD: ${{ secrets.IOS_P12_PASSWORD }}
+  BUILD_PROVISION_PROFILE_BASE64: ${{ secrets.IOS_PROVISION_PROFILE_BASE64 }}
+  KEYCHAIN_PASSWORD: ${{ secrets.IOS_KEYCHAIN_PASSWORD }}
 
+jobs:
+  deploy:
+    if: github.ref == 'refs/heads/main'
+    runs-on: macos-latest
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v3
+
+      # https://docs.github.com/en/actions/deployment/deploying-xcode-applications/installing-an-apple-certificate-on-macos-runners-for-xcode-development
+      - name: Install the Apple certificate and provisioning profile
+        run: |
+          # create variables
+          CERTIFICATE_PATH=$RUNNER_TEMP/build_certificate.p12
+          PP_PATH=$RUNNER_TEMP/build_pp.mobileprovision
+          KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
+
+          # import certificate and provisioning profile from secrets
+          echo -n "$BUILD_CERTIFICATE_BASE64" | base64 --decode -o $CERTIFICATE_PATH
+          echo -n "$BUILD_PROVISION_PROFILE_BASE64" | base64 --decode -o $PP_PATH
+
+          # create temporary keychain
+          security create-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+          security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+
+          # import certificate to keychain
+          security import $CERTIFICATE_PATH -P "$P12_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
+          security list-keychain -d user -s $KEYCHAIN_PATH
+
+          # apply provisioning profile
+          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+          cp $PP_PATH ~/Library/MobileDevice/Provisioning\ Profiles
+
+      - name: Create export_presets.cfg
+        run: cp game/export_presets.ios.example game/export_presets.cfg
+
+      - name: Extract Provisioning profile UUID and create GODOT_IOS_PROVISIONING_PROFILE_UUID_RELEASE env variable
+        run: |
+          PP_PATH=$RUNNER_TEMP/build_pp.mobileprovision
+          echo "GODOT_IOS_PROVISIONING_PROFILE_UUID_RELEASE=$(grep -a -A 1 'UUID' $PP_PATH | grep string | \
+                sed -e "s|<string>||" -e "s|</string>||" | tr -d '\t')" >> $GITHUB_ENV
+
+      - name: Export XCode project
+        uses: dulvui/godot4-ios-export@v1
+        env:
+          CODE_SIGN_IDENTITY: "Apple Distribution"
+        with:
+          working-directory: $WORKING_DIRECTORY
+          godot-version: $GODOT_VERSION
+
+      - name: Publish the App on TestFlight
+        if: success()
+        run: |
+          xcrun altool \
+            --upload-app \
+            -t ios \
+            -f *.ipa \
+            -u "${{ secrets.IOS_APPLE_ID_USERNAME }}" \
+            -p "${{ secrets.IOS_APPLE_ID_PASSWORD }}" \
+            --verbose
 ```
 
 # License
