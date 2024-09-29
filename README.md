@@ -3,8 +3,6 @@ Github Action to export a Godot Engine 4.x game to iOS.
 If you are facing problems with the action or this README feels incomplete, pull requests are welcome or open an issue.
 
 # Table of contents
-- [godot4-ios-export](#godot4-ios-export)
-- [Table of contents](#table-of-contents)
 - [Requirements](#requirements)
 - [Parameters](#parameters)
 - [How to use](#how-to-use)
