@@ -32,8 +32,7 @@ This creates a XCode project in the destination directory defined in your `expor
 
 # Example
 The exported project can then be built and uploaded to the Apple App Store's Testflight.  
-Note: This file can also be found here  
-https://github.com/dulvui/futsal-manager/blob/main/.github/workflows/upload-ios.yml 
+
 ```yml
 # SPDX-FileCopyrightText: 2023 Simon Dalvai <info@simondalvai.org>
 
